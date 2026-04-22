@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nitaq & Manpower Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --primary:#1a3a6b; --accent:#2563eb; --bg:#f0f4f8;
+  --card:#ffffff; --border:#d1d9e6; --text:#1e293b; --muted:#64748b;
+}
+body { font-family:'Cairo',sans-serif; background:var(--bg); color:var(--text); direction:rtl; }
+
+/* NAV */
+.topnav {
+  background:linear-gradient(135deg,#1a3a6b,#2563eb);
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 28px; color:#fff;
+}
+.topnav .brand { font-size:20px; font-weight:900; }
+.topnav .brand span { font-size:12px; font-weight:400; opacity:.7; display:block; }
+.nav-btns { display:flex; gap:10px; }
+.nav-btn {
+  background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3);
+  color:#fff; padding:7px 16px; border-radius:8px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-size:13px; font-weight:600;
+  transition:background .2s;
+}
+.nav-btn:hover { background:rgba(255,255,255,0.25); }
+.nav-btn.active { background:#fff; color:var(--primary); }
+
+/* PAGES */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ── KPI ── */
+.kpi-strip { background:#2563eb; display:flex; }
+.kpi-item { flex:1; text-align:center; padding:13px 6px; color:#fff; border-left:1px solid rgba(255,255,255,0.15); }
+.kpi-item:last-child { border-left:none; }
+.kpi-val { font-size:26px; font-weight:900; line-height:1; }
+.kpi-lbl { font-size:10px; font-weight:600; opacity:.8; margin-top:3px; }
+
+/* MAIN */
+.main { padding:20px 24px; }
+.row { display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+.col { flex:1; min-width:260px; }
+
+/* CARD */
+.card { background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.card-header { background:#D9E1F2; padding:10px 16px; font-size:13px; font-weight:700; color:var(--primary); border-bottom:1px solid var(--border); }
+.card-body { padding:14px; }
+
+/* TABLE */
+table { width:100%; border-collapse:collapse; font-size:12px; }
+thead th { background:#B4C6E7; color:var(--primary); font-weight:700; padding:8px 8px; text-align:center; border:1px solid var(--border); }
+tbody td { padding:7px 8px; text-align:center; border:1px solid #e2e8f0; }
+tbody tr:nth-child(even) { background:#f8fafc; }
+tbody tr:hover { background:#eef2ff; }
+td.name { text-align:right; font-weight:600; color:var(--primary); }
+tr.total-row td { background:#dbeafe!important; font-weight:700; color:#1e40af; }
+tr.grand-row td { background:#1a3a6b!important; color:#fff!important; font-weight:900; }
+tr.sec-hdr td { background:#e0e7ff; color:var(--primary); font-weight:700; }
+
+/* BADGE */
+.badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; color:#fff; }
+.b-low{background:#4ade80;color:#14532d;} .b-med{background:#16a34a;}
+.b-high{background:#166534;} .b-plat{background:#7c3aed;}
+.b-small{background:#3b82f6;} .b-zero{background:#94a3b8;color:#334155;}
+
+/* ════════════ ADMIN PAGE ════════════ */
+.admin-wrap { padding:24px; max-width:1100px; margin:0 auto; }
+.admin-title { font-size:20px; font-weight:900; color:var(--primary); margin-bottom:18px; display:flex; align-items:center; gap:10px; }
+.admin-section { background:#fff; border:1px solid var(--border); border-radius:12px; margin-bottom:20px; overflow:hidden; }
+.admin-sec-hdr { background:#D9E1F2; padding:10px 18px; font-size:13px; font-weight:700; color:var(--primary); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.admin-table-wrap { overflow-x:auto; }
+.admin-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.admin-table th { background:#f1f5f9; padding:8px 10px; font-weight:700; color:var(--primary); border:1px solid #e2e8f0; text-align:center; white-space:nowrap; }
+.admin-table td { padding:6px 8px; border:1px solid #e2e8f0; text-align:center; }
+.admin-table td.td-name { text-align:right; font-weight:600; color:var(--primary); min-width:150px; }
+.admin-table input[type=number], .admin-table input[type=text] {
+  width:100%; border:1px solid #cbd5e1; border-radius:6px;
+  padding:5px 8px; font-family:'Cairo',sans-serif; font-size:12px;
+  text-align:center; outline:none; transition:border .2s;
+}
+.admin-table input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.1); }
+.admin-table select {
+  width:100%; border:1px solid #cbd5e1; border-radius:6px;
+  padding:5px 6px; font-family:'Cairo',sans-serif; font-size:11px; outline:none;
+}
+
+/* META INPUTS */
+.meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; padding:16px; }
+.meta-item label { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+.meta-item input, .meta-item select {
+  width:100%; border:1px solid #cbd5e1; border-radius:8px;
+  padding:8px 12px; font-family:'Cairo',sans-serif; font-size:13px; outline:none;
+}
+.meta-item input:focus { border-color:#2563eb; }
+
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 20px; border-radius:8px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; border:none; transition:all .2s; }
+.btn-primary { background:#2563eb; color:#fff; }
+.btn-primary:hover { background:#1d4ed8; }
+.btn-success { background:#16a34a; color:#fff; }
+.btn-success:hover { background:#15803d; }
+.btn-danger { background:#dc2626; color:#fff; font-size:11px; padding:5px 10px; }
+.btn-danger:hover { background:#b91c1c; }
+.btn-sm { padding:5px 12px; font-size:12px; }
+
+/* TOAST */
+#toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(60px);
+  background:#1a3a6b; color:#fff; padding:12px 24px; border-radius:10px;
+  font-size:13px; font-weight:700; z-index:9999; transition:transform .3s;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+#toast.show { transform:translateX(-50%) translateY(0); }
+
+/* FOOTER */
+footer { text-align:center; padding:12px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); margin-top:8px; }
+
+/* date badge */
+.date-badge { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:5px 12px; font-size:12px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="brand">
+    🏢 Nitaq & Manpower Dashboard
+    <span id="navSubtitle">لوحة تحليل نطاقات والقوى العاملة</span>
+  </div>
+  <div class="nav-btns">
+    <button class="nav-btn active" onclick="showPage('dashboard')">📊 الداشبورد</button>
+    <button class="nav-btn" onclick="showPage('admin')">⚙️ تحديث البيانات</button>
+    <span class="date-badge" id="dateDisplay">📅 —</span>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD PAGE ══════════════ -->
+<div class="page active" id="page-dashboard">
+
+  <!-- KPI -->
+  <div class="kpi-strip">
+    <div class="kpi-item"><div class="kpi-val" id="k-total">—</div><div class="kpi-lbl">إجمالي القوى العاملة</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-muqeem">—</div><div class="kpi-lbl">مقيمون</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-saudi">—</div><div class="kpi-lbl">سعوديون</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-pct">—</div><div class="kpi-lbl">نسبة السعودة</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-cr">—</div><div class="kpi-lbl">إجمالي السجلات</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-main-cr">—</div><div class="kpi-lbl">CR رئيسي</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-branch-cr">—</div><div class="kpi-lbl">CR فرعي</div></div>
+    <div class="kpi-item"><div class="kpi-val" id="k-expired">—</div><div class="kpi-lbl">رخص منتهية</div></div>
+  </div>
+
+  <div class="main">
+    <div class="row">
+      <!-- TABLE -->
+      <div class="col" style="flex:2">
+        <div class="card">
+          <div class="card-header">📋 تفصيل الشركات</div>
+          <div class="card-body" style="padding:0">
+            <table>
+              <thead><tr>
+                <th>#</th><th>الشركة</th><th>مقيم</th><th>سعودي</th><th>الإجمالي</th>
+                <th>نطاق %</th><th>التصنيف</th><th>رصيد الفيزا</th><th>رخص منتهية</th>
+              </tr></thead>
+              <tbody id="mainTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS RIGHT -->
+      <div class="col" style="flex:1;display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="card-header">🟢 توزيع القوى العاملة</div>
+          <div class="card-body" style="position:relative;">
+            <canvas id="donut1" height="200"></canvas>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+              <div id="donutPct" style="font-size:24px;font-weight:900;color:#1a3a6b;">—</div>
+              <div style="font-size:10px;color:#64748b;font-weight:600;">نسبة السعودة</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">📊 تصنيفات نطاقات</div>
+          <div class="card-body"><canvas id="nitaqDonut" height="180"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col" style="flex:2">
+        <div class="card">
+          <div class="card-header">📈 سعودي vs مقيم لكل شركة</div>
+          <div class="card-body"><canvas id="barChart" height="130"></canvas></div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card">
+          <div class="card-header">📌 السجلات التجارية</div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div style="background:#dbeafe;border-radius:10px;padding:12px;text-align:center;border:1px solid #bfdbfe;">
+                <div id="cr-main-box" style="font-size:28px;font-weight:900;color:#1e40af;">—</div>
+                <div style="font-size:11px;color:#3b82f6;font-weight:700;">CR رئيسي</div>
+              </div>
+              <div style="background:#ede9fe;border-radius:10px;padding:12px;text-align:center;border:1px solid #c4b5fd;">
+                <div id="cr-branch-box" style="font-size:28px;font-weight:900;color:#5b21b6;">—</div>
+                <div style="font-size:11px;color:#7c3aed;font-weight:700;">CR فرعي</div>
+              </div>
+              <div style="background:#dcfce7;border-radius:10px;padding:12px;text-align:center;border:1px solid #86efac;grid-column:1/-1;">
+                <div id="cr-total-box" style="font-size:32px;font-weight:900;color:#15803d;">—</div>
+                <div style="font-size:11px;color:#16a34a;font-weight:700;">إجمالي السجلات</div>
+              </div>
+            </div>
+            <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:12px;color:#64748b;font-weight:600;">⚠️ رخص عمل منتهية</span>
+              <span id="exp-box" style="font-size:22px;font-weight:900;color:#dc2626;">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <div class="card-header">🔄 Section 1 vs Section 2</div>
+          <div class="card-body"><canvas id="sectionBar" height="90"></canvas></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-header">🎯 نسب السعودة لكل شركة نشطة</div>
+          <div class="card-body"><canvas id="nitaqPct" height="90"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer id="footerText">Nitaq & Manpower Dashboard | PPCO Group</footer>
+</div>
+
+<!-- ══════════════ ADMIN PAGE ══════════════ -->
+<div class="page" id="page-admin">
+  <div class="admin-wrap">
+    <div class="admin-title">⚙️ تحديث بيانات الداشبورد</div>
+
+    <!-- META -->
+    <div class="admin-section">
+      <div class="admin-sec-hdr">📝 بيانات عامة</div>
+      <div class="meta-grid">
+        <div class="meta-item"><label>تاريخ التحديث</label><input type="text" id="m-date" placeholder="18/04/2026"></div>
+        <div class="meta-item"><label>CR رئيسي (عدد)</label><input type="number" id="m-main-cr" min="0"></div>
+        <div class="meta-item"><label>CR فرعي (عدد)</label><input type="number" id="m-branch-cr" min="0"></div>
+        <div class="meta-item"><label>إجمالي السجلات</label><input type="number" id="m-total-cr" min="0"></div>
+      </div>
+    </div>
+
+    <!-- COMPANIES TABLE -->
+    <div class="admin-section">
+      <div class="admin-sec-hdr">
+        🏢 بيانات الشركات
+        <button class="btn btn-sm btn-success" onclick="addRow()">+ إضافة شركة</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>اسم الشركة</th>
+              <th>القطاع / أب</th>
+              <th>مقيم</th>
+              <th>سعودي</th>
+              <th>نطاق %</th>
+              <th>التصنيف</th>
+              <th>رصيد الفيزا</th>
+              <th>رخص منتهية</th>
+              <th>Section</th>
+              <th>نوع الصف</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SAVE BUTTONS -->
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:24px;">
+      <button class="btn btn-primary" onclick="saveData()">💾 حفظ وتحديث الداشبورد</button>
+      <button class="btn" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;" onclick="resetData()">🔄 إعادة البيانات الافتراضية</button>
+    </div>
+
+    <!-- EXPORT/IMPORT -->
+    <div class="admin-section">
+      <div class="admin-sec-hdr">📤 نسخ احتياطي واستيراد</div>
+      <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-success" onclick="exportData()">⬇️ تصدير البيانات (JSON)</button>
+        <label class="btn btn-primary" style="cursor:pointer;">
+          ⬆️ استيراد بيانات (JSON)
+          <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
+        </label>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast">✅ تم الحفظ بنجاح!</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DEFAULT DATA
+// ══════════════════════════════════════════
+const DEFAULT_META = { date:'18/04/2026', mainCR:8, branchCR:4, totalCR:13 };
+
+const DEFAULT_COMPANIES = [
+  { sn:1,  name:'HSM',                  parent:'',    section:1, type:'main',   muqeem:533, saudi:82,  nitaqPct:14.24, zone:'Medium Green', visa:75,  expired:0 },
+  { sn:'', name:'HSM Branch',           parent:'HSM', section:1, type:'branch', muqeem:100, saudi:7,   nitaqPct:6.93,  zone:'Low Green',    visa:0,   expired:0 },
+  { sn:2,  name:'PPCO',                 parent:'',    section:1, type:'main',   muqeem:875, saudi:125, nitaqPct:12.05, zone:'Medium Green', visa:0,   expired:7 },
+  { sn:'', name:'PPCO Mining',          parent:'PPCO',section:1, type:'branch', muqeem:3,   saudi:3,   nitaqPct:50,    zone:'Platinum',     visa:10,  expired:0 },
+  { sn:'', name:'PPCO Transportation',  parent:'PPCO',section:1, type:'branch', muqeem:0,   saudi:0,   nitaqPct:0,     zone:'Small Green',  visa:0,   expired:0 },
+  { sn:3,  name:'Trust Pioneer',        parent:'',    section:1, type:'main',   muqeem:0,   saudi:0,   nitaqPct:0,     zone:'—',            visa:0,   expired:0 },
+  { sn:4,  name:'Golden Haven',         parent:'',    section:1, type:'main',   muqeem:3,   saudi:2,   nitaqPct:40,    zone:'Small Green',  visa:2,   expired:0 },
+  { sn:5,  name:'VSOL',                 parent:'',    section:1, type:'main',   muqeem:0,   saudi:0,   nitaqPct:0,     zone:'Small Green',  visa:0,   expired:0 },
+  { sn:6,  name:'One Million Dammam',   parent:'',    section:2, type:'main',   muqeem:0,   saudi:1,   nitaqPct:25,    zone:'Medium Green', visa:4,   expired:0 },
+  { sn:'', name:'Milan Café',           parent:'One Million Dammam', section:2, type:'branch', muqeem:24, saudi:6, nitaqPct:0, zone:'Medium Green', visa:0, expired:0 },
+  { sn:7,  name:'Al-Nomor Dammam',      parent:'',    section:2, type:'main',   muqeem:27,  saudi:7,   nitaqPct:30.05, zone:'High Green',   visa:9,   expired:0 },
+  { sn:8,  name:'Sports System',        parent:'',    section:2, type:'main',   muqeem:29,  saudi:14,  nitaqPct:42.32, zone:'Medium Green', visa:8,   expired:1 },
+];
+
+const ZONES = ['—','Low Green','Medium Green','High Green','Platinum','Small Green','Small Green A'];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let meta = {};
+let companies = [];
+let charts = {};
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem('nitaq_data');
+    if (saved) {
+      const d = JSON.parse(saved);
+      meta = d.meta || { ...DEFAULT_META };
+      companies = d.companies || JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+    } else {
+      meta = { ...DEFAULT_META };
+      companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+    }
+  } catch(e) {
+    meta = { ...DEFAULT_META };
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+  }
+}
+
+function saveToStorage() {
+  localStorage.setItem('nitaq_data', JSON.stringify({ meta, companies }));
+}
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.target.classList.add('active');
+  if (page === 'admin') renderAdminTable();
+}
+
+// ══════════════════════════════════════════
+//  CALCULATIONS
+// ══════════════════════════════════════════
+function calc() {
+  const totalMuqeem = companies.reduce((s,c) => s + Number(c.muqeem||0), 0);
+  const totalSaudi  = companies.reduce((s,c) => s + Number(c.saudi||0), 0);
+  const total       = totalMuqeem + totalSaudi;
+  const pct         = total > 0 ? (totalSaudi / total * 100).toFixed(1) : '0.0';
+  const expiredTotal= companies.reduce((s,c) => s + Number(c.expired||0), 0);
+
+  const sec1 = companies.filter(c => c.section == 1);
+  const sec2 = companies.filter(c => c.section == 2);
+  const s1m  = sec1.reduce((s,c)=>s+Number(c.muqeem||0),0);
+  const s1sa = sec1.reduce((s,c)=>s+Number(c.saudi||0),0);
+  const s2m  = sec2.reduce((s,c)=>s+Number(c.muqeem||0),0);
+  const s2sa = sec2.reduce((s,c)=>s+Number(c.saudi||0),0);
+
+  return { totalMuqeem, totalSaudi, total, pct, expiredTotal, s1m, s1sa, s2m, s2sa };
+}
+
+// ══════════════════════════════════════════
+//  BADGE HTML
+// ══════════════════════════════════════════
+function badgeHtml(zone) {
+  const map = {
+    'Low Green':    'b-low',
+    'Medium Green': 'b-med',
+    'High Green':   'b-high',
+    'Platinum':     'b-plat',
+    'Small Green':  'b-small',
+    'Small Green A':'b-small',
+    '—':            'b-zero'
+  };
+  return `<span class="badge ${map[zone]||'b-zero'}">${zone}</span>`;
+}
+
+// ══════════════════════════════════════════
+//  RENDER DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard() {
+  const { totalMuqeem, totalSaudi, total, pct, expiredTotal, s1m, s1sa, s2m, s2sa } = calc();
+  const cr = meta.totalCR || (Number(meta.mainCR||0)+Number(meta.branchCR||0));
+
+  // KPIs
+  document.getElementById('k-total').textContent   = total.toLocaleString();
+  document.getElementById('k-muqeem').textContent  = totalMuqeem.toLocaleString();
+  document.getElementById('k-saudi').textContent   = totalSaudi.toLocaleString();
+  document.getElementById('k-pct').textContent     = pct + '%';
+  document.getElementById('k-cr').textContent      = cr;
+  document.getElementById('k-main-cr').textContent = meta.mainCR || '—';
+  document.getElementById('k-branch-cr').textContent = meta.branchCR || '—';
+  document.getElementById('k-expired').textContent = expiredTotal;
+
+  document.getElementById('donutPct').textContent  = pct + '%';
+  document.getElementById('dateDisplay').textContent = '📅 ' + (meta.date || '—');
+  document.getElementById('cr-main-box').textContent   = meta.mainCR || '—';
+  document.getElementById('cr-branch-box').textContent = meta.branchCR || '—';
+  document.getElementById('cr-total-box').textContent  = cr;
+  document.getElementById('exp-box').textContent = expiredTotal;
+  document.getElementById('footerText').textContent = `Nitaq & Manpower Dashboard | PPCO Group | آخر تحديث: ${meta.date||'—'}`;
+
+  // TABLE
+  let html = '';
+  const sections = [1, 2];
+  sections.forEach(sec => {
+    const rows = companies.filter(c => c.section == sec);
+    if (!rows.length) return;
+    html += `<tr class="sec-hdr"><td colspan="9">📁 Section ${sec}</td></tr>`;
+
+    // group by parent
+    const mains = rows.filter(c => c.type === 'main' || !c.parent);
+    mains.forEach(m => {
+      const branches = rows.filter(c => c.parent === m.name);
+      const allRows  = [m, ...branches];
+      const grpMuqeem = allRows.reduce((s,c)=>s+Number(c.muqeem||0),0);
+      const grpSaudi  = allRows.reduce((s,c)=>s+Number(c.saudi||0),0);
+
+      allRows.forEach((c,i) => {
+        const isBranch = c.type === 'branch';
+        const sn = c.sn !== '' ? c.sn : '—';
+        const name = isBranch ? `<span style="padding-right:18px;">↳ ${c.name}</span>` : c.name;
+        const t = Number(c.muqeem||0) + Number(c.saudi||0);
+        html += `<tr>
+          <td>${sn}</td>
+          <td class="name">${name}</td>
+          <td>${Number(c.muqeem||0).toLocaleString()}</td>
+          <td>${Number(c.saudi||0).toLocaleString()}</td>
+          <td><strong>${t.toLocaleString()}</strong></td>
+          <td>${c.nitaqPct > 0 ? c.nitaqPct + '%' : '—'}</td>
+          <td>${badgeHtml(c.zone||'—')}</td>
+          <td>${c.visa||0}</td>
+          <td>${c.expired||0}</td>
+        </tr>`;
+      });
+
+      if (branches.length > 0) {
+        html += `<tr class="total-row">
+          <td colspan="2">المجموع ${m.name}</td>
+          <td>${grpMuqeem.toLocaleString()}</td><td>${grpSaudi.toLocaleString()}</td>
+          <td>${(grpMuqeem+grpSaudi).toLocaleString()}</td><td colspan="4"></td>
+        </tr>`;
+      }
+    });
+
+    const sm = rows.reduce((s,c)=>s+Number(c.muqeem||0),0);
+    const ss = rows.reduce((s,c)=>s+Number(c.saudi||0),0);
+    html += `<tr class="grand-row">
+      <td colspan="2">Grand Total — Section ${sec}</td>
+      <td>${sm.toLocaleString()}</td><td>${ss.toLocaleString()}</td><td>${(sm+ss).toLocaleString()}</td>
+      <td colspan="4"></td>
+    </tr>`;
+  });
+
+  html += `<tr style="background:#0f172a!important;">
+    <td colspan="2" style="color:#fff;font-weight:900;background:#0f172a;">🏆 الإجمالي الكلي</td>
+    <td style="color:#93c5fd;font-weight:900;background:#0f172a;">${totalMuqeem.toLocaleString()}</td>
+    <td style="color:#86efac;font-weight:900;background:#0f172a;">${totalSaudi.toLocaleString()}</td>
+    <td style="color:#fbbf24;font-weight:900;background:#0f172a;">${total.toLocaleString()}</td>
+    <td colspan="4" style="background:#0f172a;color:#94a3b8;">${pct}% سعودة</td>
+  </tr>`;
+  document.getElementById('mainTableBody').innerHTML = html;
+
+  // CHARTS
+  renderCharts(totalMuqeem, totalSaudi, pct, s1m, s1sa, s2m, s2sa);
+}
+
+// ══════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts(totalMuqeem, totalSaudi, pct, s1m, s1sa, s2m, s2sa) {
+  Chart.defaults.font.family = 'Cairo, sans-serif';
+
+  destroyChart('donut1');
+  charts['donut1'] = new Chart(document.getElementById('donut1'), {
+    type:'doughnut',
+    data:{
+      labels:['مقيم','سعودي'],
+      datasets:[{ data:[totalMuqeem, totalSaudi], backgroundColor:['#3b82f6','#16a34a'], borderWidth:3, borderColor:'#fff' }]
+    },
+    options:{ cutout:'72%', plugins:{ legend:{ position:'bottom', labels:{ padding:12, boxWidth:12 } } } }
+  });
+
+  // Zone counts
+  const zoneCounts = {};
+  companies.forEach(c => { zoneCounts[c.zone||'—'] = (zoneCounts[c.zone||'—']||0) + 1; });
+  const zoneLabels = Object.keys(zoneCounts).filter(z=>z!=='—');
+  const zoneData   = zoneLabels.map(z=>zoneCounts[z]);
+  const zoneColors = { 'Low Green':'#4ade80','Medium Green':'#16a34a','High Green':'#166534','Platinum':'#7c3aed','Small Green':'#3b82f6','Small Green A':'#2563eb' };
+
+  destroyChart('nitaqDonut');
+  charts['nitaqDonut'] = new Chart(document.getElementById('nitaqDonut'), {
+    type:'doughnut',
+    data:{
+      labels:zoneLabels,
+      datasets:[{ data:zoneData, backgroundColor:zoneLabels.map(z=>zoneColors[z]||'#94a3b8'), borderWidth:3, borderColor:'#fff' }]
+    },
+    options:{ cutout:'60%', plugins:{ legend:{ position:'bottom', labels:{ padding:8, boxWidth:10, font:{size:10} } } } }
+  });
+
+  // Bar - all companies
+  const active = companies.filter(c => (Number(c.muqeem||0)+Number(c.saudi||0)) > 0);
+  destroyChart('barChart');
+  charts['barChart'] = new Chart(document.getElementById('barChart'), {
+    type:'bar',
+    data:{
+      labels: active.map(c=>c.name),
+      datasets:[
+        { label:'سعودي', data:active.map(c=>Number(c.saudi||0)), backgroundColor:'#16a34a', borderRadius:4 },
+        { label:'مقيم',  data:active.map(c=>Number(c.muqeem||0)), backgroundColor:'#3b82f6', borderRadius:4 }
+      ]
+    },
+    options:{ responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'#f1f5f9' } } } }
+  });
+
+  // Section comparison
+  destroyChart('sectionBar');
+  charts['sectionBar'] = new Chart(document.getElementById('sectionBar'), {
+    type:'bar',
+    data:{
+      labels:['Section 1','Section 2'],
+      datasets:[
+        { label:'مقيم',     data:[s1m,  s2m],       backgroundColor:'#3b82f6', borderRadius:6 },
+        { label:'سعودي',    data:[s1sa, s2sa],       backgroundColor:'#16a34a', borderRadius:6 },
+        { label:'الإجمالي', data:[s1m+s1sa, s2m+s2sa], backgroundColor:'#f59e0b', borderRadius:6 }
+      ]
+    },
+    options:{ responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ grid:{ display:false } } } }
+  });
+
+  // Nitaqat %
+  const withPct = active.filter(c => Number(c.nitaqPct||0) > 0);
+  const pctColors = {'Low Green':'#4ade80','Medium Green':'#16a34a','High Green':'#166534','Platinum':'#7c3aed','Small Green':'#3b82f6','Small Green A':'#2563eb'};
+  destroyChart('nitaqPct');
+  charts['nitaqPct'] = new Chart(document.getElementById('nitaqPct'), {
+    type:'bar',
+    data:{
+      labels:withPct.map(c=>c.name),
+      datasets:[{ label:'نسبة السعودة %', data:withPct.map(c=>Number(c.nitaqPct||0)), backgroundColor:withPct.map(c=>pctColors[c.zone]||'#3b82f6'), borderRadius:6 }]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{ x:{ grid:{ display:false }, ticks:{ font:{size:10} } }, y:{ ticks:{ callback:v=>v+'%', font:{size:10} } } }
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+//  ADMIN TABLE RENDER
+// ══════════════════════════════════════════
+function renderAdminTable() {
+  // fill meta
+  document.getElementById('m-date').value     = meta.date || '';
+  document.getElementById('m-main-cr').value  = meta.mainCR || '';
+  document.getElementById('m-branch-cr').value= meta.branchCR || '';
+  document.getElementById('m-total-cr').value = meta.totalCR || '';
+
+  const zoneOpts = ZONES.map(z => `<option value="${z}">${z}</option>`).join('');
+  let html = '';
+  companies.forEach((c, i) => {
+    const zoneSelect = `<select onchange="companies[${i}].zone=this.value">
+      ${ZONES.map(z=>`<option value="${z}"${c.zone===z?' selected':''}>${z}</option>`).join('')}
+    </select>`;
+    html += `<tr>
+      <td>${i+1}</td>
+      <td><input type="text" value="${c.name}" onchange="companies[${i}].name=this.value" style="min-width:130px;text-align:right;"></td>
+      <td><input type="text" value="${c.parent||''}" onchange="companies[${i}].parent=this.value" placeholder="اتركه فارغ للرئيسي"></td>
+      <td><input type="number" value="${c.muqeem||0}" min="0" onchange="companies[${i}].muqeem=+this.value"></td>
+      <td><input type="number" value="${c.saudi||0}"  min="0" onchange="companies[${i}].saudi=+this.value"></td>
+      <td><input type="number" value="${c.nitaqPct||0}" min="0" step="0.01" onchange="companies[${i}].nitaqPct=+this.value"></td>
+      <td>${zoneSelect}</td>
+      <td><input type="number" value="${c.visa||0}"    min="0" onchange="companies[${i}].visa=+this.value"></td>
+      <td><input type="number" value="${c.expired||0}" min="0" onchange="companies[${i}].expired=+this.value"></td>
+      <td><select onchange="companies[${i}].section=+this.value">
+        <option value="1"${c.section==1?' selected':''}>1</option>
+        <option value="2"${c.section==2?' selected':''}>2</option>
+      </select></td>
+      <td><select onchange="companies[${i}].type=this.value">
+        <option value="main"${c.type==='main'?' selected':''}>رئيسي</option>
+        <option value="branch"${c.type==='branch'?' selected':''}>فرعي</option>
+      </select></td>
+      <td><button class="btn btn-danger" onclick="deleteRow(${i})">🗑</button></td>
+    </tr>`;
+  });
+  document.getElementById('adminTableBody').innerHTML = html;
+}
+
+function addRow() {
+  companies.push({ sn:'', name:'شركة جديدة', parent:'', section:1, type:'main', muqeem:0, saudi:0, nitaqPct:0, zone:'—', visa:0, expired:0 });
+  renderAdminTable();
+}
+
+function deleteRow(i) {
+  if (confirm('هل تريد حذف هذه الشركة؟')) {
+    companies.splice(i, 1);
+    renderAdminTable();
+  }
+}
+
+function saveData() {
+  meta.date     = document.getElementById('m-date').value;
+  meta.mainCR   = +document.getElementById('m-main-cr').value;
+  meta.branchCR = +document.getElementById('m-branch-cr').value;
+  meta.totalCR  = +document.getElementById('m-total-cr').value;
+  saveToStorage();
+  renderDashboard();
+  showToast('✅ تم الحفظ وتحديث الداشبورد بنجاح!');
+}
+
+function resetData() {
+  if (confirm('سيتم إعادة كل البيانات للقيم الافتراضية. متأكد؟')) {
+    meta = { ...DEFAULT_META };
+    companies = JSON.parse(JSON.stringify(DEFAULT_COMPANIES));
+    saveToStorage();
+    renderAdminTable();
+    renderDashboard();
+    showToast('🔄 تمت إعادة البيانات الافتراضية');
+  }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ meta, companies }, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nitaq_data_' + (meta.date||'backup').replace(/\//g,'-') + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.meta && d.companies) {
+        meta = d.meta;
+        companies = d.companies;
+        saveToStorage();
+        renderAdminTable();
+        renderDashboard();
+        showToast('✅ تم الاستيراد بنجاح!');
+      } else { alert('الملف غير صالح'); }
+    } catch { alert('خطأ في قراءة الملف'); }
+  };
+  reader.readAsText(file);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// INIT
+loadData();
+renderDashboard();
+</script>
+</body>
+</html>
